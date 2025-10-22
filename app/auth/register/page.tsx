@@ -1,5 +1,8 @@
+"use client"
+
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { 
   Card, 
   Form, 
@@ -7,42 +10,58 @@ import {
   Button, 
   Typography, 
   Space,
-  Divider 
+  Divider,
+  Alert,
+  theme
 } from 'antd'
 import { 
   UserOutlined, 
   LockOutlined,
   MailOutlined,
-  HeartOutlined 
+  HeartOutlined,
+  EyeInvisibleOutlined,
+  EyeTwoTone
 } from '@ant-design/icons'
-import { useAuth } from '../../../context/AuthContext'
+import { useAuth } from '../../../contexts/auth-context'
 
 const { Title, Text } = Typography
 
 interface RegisterFormValues {
   username: string
   email: string
+  firstName: string
+  lastName: string
   password: string
   confirmPassword: string
 }
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { register } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
+  const { token } = theme.useToken()
+  const [form] = Form.useForm()
 
   const onFinish = async (values: RegisterFormValues) => {
     setLoading(true)
+    setError(null)
     try {
-      const result = await register({
-        username: values.username,
-        email: values.email,
-        password: values.password,
-      })
+      const success = await register(
+        values.username,
+        values.password,
+        values.email,
+        values.firstName,
+        values.lastName
+      )
       
-      if (result.success) {
-        navigate('/login')
+      if (success) {
+        router.push('/') // Redirect to home after successful registration
+      } else {
+        setError('Đăng ký thất bại. Vui lòng thử lại.')
       }
+    } catch (err: any) {
+      setError(err.message || 'Đăng ký thất bại')
     } finally {
       setLoading(false)
     }
@@ -77,12 +96,53 @@ export default function RegisterPage() {
           </Space>
         </div>
 
+        {error && (
+          <Alert
+            message={error}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setError(null)}
+            style={{ marginBottom: 24 }}
+          />
+        )}
+
         <Form
+          form={form}
           name="register"
           onFinish={onFinish}
           layout="vertical"
           size="large"
+          autoComplete="off"
         >
+          <Form.Item
+            name="firstName"
+            rules={[
+              { required: true, message: 'Vui lòng nhập tên!' },
+              { min: 2, message: 'Tên phải có ít nhất 2 ký tự!' }
+            ]}
+          >
+            <Input 
+              prefix={<UserOutlined style={{ color: token.colorTextPlaceholder }} />} 
+              placeholder="Tên"
+              allowClear
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="lastName"
+            rules={[
+              { required: true, message: 'Vui lòng nhập họ!' },
+              { min: 2, message: 'Họ phải có ít nhất 2 ký tự!' }
+            ]}
+          >
+            <Input 
+              prefix={<UserOutlined style={{ color: token.colorTextPlaceholder }} />} 
+              placeholder="Họ"
+              allowClear
+            />
+          </Form.Item>
+
           <Form.Item
             name="username"
             rules={[
@@ -91,8 +151,9 @@ export default function RegisterPage() {
             ]}
           >
             <Input 
-              prefix={<UserOutlined />} 
+              prefix={<UserOutlined style={{ color: token.colorTextPlaceholder }} />} 
               placeholder="Tên đăng nhập"
+              allowClear
             />
           </Form.Item>
 
@@ -104,8 +165,9 @@ export default function RegisterPage() {
             ]}
           >
             <Input 
-              prefix={<MailOutlined />} 
+              prefix={<MailOutlined style={{ color: token.colorTextPlaceholder }} />} 
               placeholder="Email"
+              allowClear
             />
           </Form.Item>
 
@@ -117,8 +179,9 @@ export default function RegisterPage() {
             ]}
           >
             <Input.Password 
-              prefix={<LockOutlined />} 
+              prefix={<LockOutlined style={{ color: token.colorTextPlaceholder }} />} 
               placeholder="Mật khẩu"
+              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
             />
           </Form.Item>
 
@@ -138,8 +201,9 @@ export default function RegisterPage() {
             ]}
           >
             <Input.Password 
-              prefix={<LockOutlined />} 
+              prefix={<LockOutlined style={{ color: token.colorTextPlaceholder }} />} 
               placeholder="Xác nhận mật khẩu"
+              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
             />
           </Form.Item>
 
@@ -168,7 +232,7 @@ export default function RegisterPage() {
         <div style={{ textAlign: 'center' }}>
           <Text type="secondary">
             Đã có tài khoản?{' '}
-            <Link to="/login" style={{ color: '#1890ff' }}>
+            <Link href="/auth/login" style={{ color: '#1890ff' }}>
               Đăng nhập ngay
             </Link>
           </Text>

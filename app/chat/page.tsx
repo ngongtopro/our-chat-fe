@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
 import {
   Row,
   Col,
@@ -20,7 +19,6 @@ import {
   UserOutlined,
   MessageOutlined
 } from '@ant-design/icons'
-import { chatAPI } from '../../services/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import '../../styles/Chat.css'

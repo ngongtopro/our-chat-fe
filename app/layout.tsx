@@ -1,28 +1,33 @@
-import { useState, ReactNode } from 'react'
-import { Layout } from 'antd'
-import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
+import type { Metadata } from "next";
+import { Lexend } from "next/font/google";
+import 'antd/dist/reset.css'
+import HeaderComponent from "../components/header";
+import { AuthProvider } from "../contexts/auth-context";
 
-const { Content } = Layout
+const lexend = Lexend({
+  variable: "--font-lexend",
+  subsets: ["latin", "vietnamese"],
+});
 
-interface AppLayoutProps {
-  children: ReactNode
-}
+export const metadata: Metadata = {
+  title: "Our Chat",
+  description: "Cùng chat và chơi nào",
+};
 
-export default function AppLayout({ children }: AppLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false)
+export default function RootLayout({ 
+  children 
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
 
   return (
-    <Layout className="full-height">
-      <Navbar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <Layout>
-        <Sidebar collapsed={collapsed} />
-        <Layout style={{ marginLeft: collapsed ? 80 : 200 }}>
-          <Content style={{ margin: '16px', overflow: 'auto' }}>
-            {children}
-          </Content>
-        </Layout>
-      </Layout>
-    </Layout>
-  )
+    <html lang="vi">
+      <body className={`${lexend.variable} antialiased`}>
+        <AuthProvider>
+          <HeaderComponent />
+          {children}
+        </AuthProvider>
+      </body>
+    </html>
+  );
 }

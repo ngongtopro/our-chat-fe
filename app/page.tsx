@@ -1,329 +1,406 @@
-import { useState, useEffect } from 'react'
-import { Row, Col, Card, Statistic, List, Avatar, Button, Typography, Space, Badge, Spin} from 'antd'
-import { MessageOutlined, PlayCircleOutlined, BugOutlined, WalletOutlined, UserOutlined, TrophyOutlined} from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
-import { chatAPI, caroAPI, farmAPI, walletAPI } from '../services/api'
+"use client";
 
-const { Title, Text } = Typography
+import React from 'react'
+import { 
+  Layout, 
+  Typography, 
+  Row, 
+  Col, 
+  Card, 
+  Space, 
+  Divider,
+  Statistic,
+  Avatar,
+  theme,
+  Button
+} from 'antd'
+import {
+  MessageOutlined,
+  PlayCircleOutlined,
+  BugOutlined,
+  WalletOutlined,
+  UserOutlined,
+  StarFilled
+} from '@ant-design/icons'
+import Link from 'next/link'
+import HeroSection from '../components/HeroSection'
+import { useAuth } from '../contexts/auth-context'
 
-// Types
-interface User {
-  id: number
-  username: string
-  is_online?: boolean
-}
-
-interface Message {
-  id: number
-  content: string
-  created_at: string
-}
-
-interface Chat {
-  id: number
-  other_user?: User
-  latest_message?: Message
-  unread_count: number
-}
-
-interface GameStats {
-  games_won?: number
-  games_played?: number
-  win_rate?: number
-}
-
-interface FarmStats {
-  level?: number
-  coins?: number
-  plants?: number
-}
-
-interface WalletStats {
-  current_balance?: number
-  total_transactions?: number
-}
-
-interface HomeData {
-  recentChats: Chat[]
-  gameStats: GameStats
-  farmStats: FarmStats
-  walletStats: WalletStats
-  onlineUsers: User[]
-}
+const { Content, Footer } = Layout
+const { Title, Paragraph, Text } = Typography
 
 export default function HomePage() {
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<HomeData>({
-    recentChats: [],
-    gameStats: {},
-    farmStats: {},
-    walletStats: {},
-    onlineUsers: []
-  })
+  const { token } = theme.useToken()
+  const { user, logout } = useAuth()
 
-  useEffect(() => {
-    loadHomeData()
-  }, [])
-
-  const loadHomeData = async () => {
-    try {
-      setLoading(true)
-      
-      // Load data from multiple APIs
-      const [chatsRes, usersRes] = await Promise.all([
-        chatAPI.getPrivateChats().catch(() => ({ data: [] })),
-        chatAPI.getUsers().catch(() => ({ data: [] }))
-      ])
-
-      // Try to load game, farm, and wallet stats (may fail if not implemented)
-      let gameStats = {}
-      let farmStats = {}
-      let walletStats = {}
-
-      try {
-        const gameRes = await caroAPI.getStats()
-        gameStats = gameRes.data
-      } catch (error) {
-        console.log('Game stats not available')
-      }
-
-      try {
-        const farmRes = await farmAPI.getStats()
-        farmStats = farmRes.data
-      } catch (error) {
-        console.log('Farm stats not available')
-      }
-
-      try {
-        const walletRes = await walletAPI.getStats()
-        walletStats = walletRes.data
-      } catch (error) {
-        console.log('Wallet stats not available')
-      }
-
-      setData({
-        recentChats: Array.isArray(chatsRes.data) ? chatsRes.data.slice(0, 5) : [],
-        gameStats,
-        farmStats,
-        walletStats,
-        onlineUsers: Array.isArray(usersRes.data) ? usersRes.data.filter((user: User) => user.is_online).slice(0, 10) : []
-      })
-    } catch (error) {
-      console.error('Error loading home data:', error)
-    } finally {
-      setLoading(false)
-    }
+  const handleLogout = () => {
+    logout()
   }
 
-  if (loading) {
+  const features = [
+    {
+      icon: <MessageOutlined style={{ fontSize: 24, color: token.colorPrimary }} />,
+      title: 'Chat Realtime',
+      description: 'Trò chuyện trực tuyến với bạn bè một cách nhanh chóng và an toàn',
+      link: '/chat'
+    },
+    {
+      icon: <PlayCircleOutlined style={{ fontSize: 24, color: '#40a9ff' }} />,
+      title: 'Game Online',
+      description: 'Chơi game Caro và nhiều trò chơi khác cùng người thân yêu',
+      link: '/caro'
+    },
+    {
+      icon: <BugOutlined style={{ fontSize: 24, color: '#1890ff' }} />,
+      title: 'Trang Trại Ảo',
+      description: 'Xây dựng và quản lý trang trại của riêng bạn',
+      link: '/farm'
+    },
+    {
+      icon: <WalletOutlined style={{ fontSize: 24, color: '#40a9ff' }} />,
+      title: 'Ví Điện Tử',
+      description: 'Quản lý tài chính cá nhân một cách dễ dàng và tiện lợi',
+      link: '/wallet'
+    }
+  ]
+
+  const stats = [
+    { title: 'Người dùng hoạt động', value: 1000, suffix: '+' },
+    { title: 'Tin nhắn mỗi ngày', value: 50000, suffix: '+' },
+    { title: 'Trận game đã chơi', value: 25000, suffix: '+' },
+    { title: 'Đánh giá 5 sao', value: 4.8, precision: 1, suffix: '/5' }
+  ]
+
+  const testimonials = [
+    {
+      avatar: <UserOutlined />,
+      name: 'Nguyễn Văn A',
+      comment: 'Ứng dụng rất tuyệt vời! Tôi có thể trò chuyện và chơi game với bạn bè mọi lúc.'
+    },
+    {
+      avatar: <UserOutlined />,
+      name: 'Trần Thị B',
+      comment: 'Giao diện đẹp, dễ sử dụng. Đặc biệt thích tính năng trang trại ảo.'
+    },
+    {
+      avatar: <UserOutlined />,
+      name: 'Lê Minh C',
+      comment: 'Ví điện tử rất tiện lợi, giúp tôi quản lý chi tiêu hiệu quả hơn.'
+    }
+  ]
+
+  // Dashboard cho người dùng đã đăng nhập
+  if (user) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh' 
-      }}>
-        <Spin size="large" />
-      </div>
+      <Layout>
+        <Content>
+          {/* Welcome Section for Logged In Users */}
+          <div style={{
+            background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #40a9ff 100%)`,
+            padding: '60px 50px',
+            textAlign: 'center',
+            color: '#fff'
+          }}>
+            <Row justify="center">
+              <Col xs={24} md={16}>
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                  <Title level={2} style={{ color: '#fff', margin: 0 }}>
+                    🎉 Chào mừng trở lại, {user.first_name}!
+                  </Title>
+                  <Paragraph style={{ 
+                    fontSize: 16,
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    margin: 0
+                  }}>
+                    Sẵn sàng khám phá những tính năng tuyệt vời của Love Chat
+                  </Paragraph>
+                </Space>
+              </Col>
+            </Row>
+          </div>
+
+          {/* Quick Actions for Logged In Users */}
+          <div style={{ padding: '60px 50px', background: '#fff' }}>
+            <Row justify="center" style={{ marginBottom: 40 }}>
+              <Col xs={24} md={16} style={{ textAlign: 'center' }}>
+                <Title level={2}>Bắt đầu ngay</Title>
+                <Paragraph style={{ fontSize: 16, color: token.colorTextSecondary }}>
+                  Chọn tính năng bạn muốn sử dụng
+                </Paragraph>
+              </Col>
+            </Row>
+            
+            <Row gutter={[32, 32]} justify="center">
+              {features.map((feature, index) => (
+                <Col key={index} xs={24} sm={12} md={6}>
+                  <Link href={feature.link}>
+                    <Card
+                      hoverable
+                      style={{ 
+                        height: '100%',
+                        borderRadius: 16,
+                        border: `1px solid ${token.colorBorder}`
+                      }}
+                      styles={{ body: { 
+                        padding: '32px 24px',
+                        textAlign: 'center'
+                      } }}
+                    >
+                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <div style={{ 
+                          width: 64,
+                          height: 64,
+                          borderRadius: '50%',
+                          background: `${token.colorPrimary}10`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto'
+                        }}>
+                          {feature.icon}
+                        </div>
+                        <Title level={4} style={{ margin: 0 }}>
+                          {feature.title}
+                        </Title>
+                        <Paragraph style={{ 
+                          margin: 0,
+                          color: token.colorTextSecondary 
+                        }}>
+                          {feature.description}
+                        </Paragraph>
+                      </Space>
+                    </Card>
+                  </Link>
+                </Col>
+              ))}
+            </Row>
+
+            {/* Account Info and Logout */}
+            <div style={{ textAlign: 'center', marginTop: 60 }}>
+              <Card style={{ maxWidth: 600, margin: '0 auto' }}>
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                  <Title level={4}>Thông tin tài khoản</Title>
+                  <Space direction="vertical">
+                    <Text><strong>Tên đăng nhập:</strong> {user.username}</Text>
+                    <Text><strong>Email:</strong> {user.email}</Text>
+                    <Text><strong>Họ tên:</strong> {user.first_name} {user.last_name}</Text>
+                  </Space>
+                  <Button type="primary" danger onClick={handleLogout}>
+                    Đăng xuất
+                  </Button>
+                </Space>
+              </Card>
+            </div>
+          </div>
+        </Content>
+      </Layout>
     )
   }
 
+  // Landing Page cho người dùng chưa đăng nhập
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2}>
-          <Space>
-            <span>☁️</span>
-            Chào mừng đến với Love Chat!
-          </Space>
-        </Title>
-        <Text type="secondary">
-          Kết nối, trò chuyện và vui chơi cùng bạn bè
-        </Text>
-      </div>
+    <Layout className="landing-page">
+      <Content style={{ marginTop: -64 }}>
+        {/* Hero Section */}
+        <HeroSection />
 
-      {/* Statistics Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Tin nhắn"
-              value={data.recentChats.length}
-              prefix={<MessageOutlined style={{ color: '#1890ff' }} />}
-            />
-            <Button 
-              type="link" 
-              onClick={() => navigate('/chat')}
-              style={{ padding: 0, marginTop: 8 }}
-            >
-              Xem tất cả
-            </Button>
-          </Card>
-        </Col>
-        
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Trận thắng"
-              value={data.gameStats.games_won || 0}
-              prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
-            />
-            <Button 
-              type="link" 
-              onClick={() => navigate('/caro')}
-              style={{ padding: 0, marginTop: 8 }}
-            >
-              Chơi game
-            </Button>
-          </Card>
-        </Col>
-        
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Cấp độ trang trại"
-              value={data.farmStats.level || 1}
-              prefix={<BugOutlined style={{ color: '#fa8c16' }} />}
-            />
-            <Button 
-              type="link" 
-              onClick={() => navigate('/farm')}
-              style={{ padding: 0, marginTop: 8 }}
-            >
-              Vào trang trại
-            </Button>
-          </Card>
-        </Col>
-        
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Số dư ví"
-              value={data.walletStats.current_balance || 0}
-              prefix={<WalletOutlined style={{ color: '#1890ff' }} />}
-              suffix="đ"
-            />
-            <Button 
-              type="link" 
-              onClick={() => navigate('/wallet')}
-              style={{ padding: 0, marginTop: 8 }}
-            >
-              Quản lý ví
-            </Button>
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]}>
-        {/* Recent Chats */}
-        <Col xs={24} lg={12}>
-          <Card 
-            title="Tin nhắn gần đây" 
-            extra={
-              <Button type="link" onClick={() => navigate('/chat')}>
-                Xem tất cả
-              </Button>
-            }
-          >
-            <List
-              dataSource={Array.isArray(data.recentChats) ? data.recentChats : []}
-              renderItem={(chat) => (
-                <List.Item
-                  onClick={() => navigate(`/chat/${chat.other_user?.id}`)}
-                  style={{ cursor: 'pointer' }}
+        {/* Statistics */}
+        <div style={{ padding: '80px 50px', background: '#fff' }}>
+          <Row gutter={[32, 32]} justify="center">
+            {stats.map((stat, index) => (
+              <Col key={index} xs={12} md={6}>
+                <Card 
+                  variant="borderless"
+                  style={{ textAlign: 'center', height: '100%' }}
+                  styles={{ body: { padding: '32px 16px' } }}
                 >
-                  <List.Item.Meta
-                    avatar={
-                      <Badge dot={chat.unread_count > 0} status="processing">
-                        <Avatar icon={<UserOutlined />} />
-                      </Badge>
-                    }
-                    title={chat.other_user?.username || 'Người dùng'}
-                    description={
-                      chat.latest_message ? 
-                        `${chat.latest_message.content.slice(0, 50)}...` : 
-                        'Chưa có tin nhắn'
-                    }
+                  <Statistic
+                    title={stat.title}
+                    value={stat.value}
+                    precision={stat.precision}
+                    suffix={stat.suffix}
+                    valueStyle={{ 
+                      color: token.colorPrimary,
+                      fontSize: '2rem',
+                      fontWeight: 'bold'
+                    }}
                   />
-                  {chat.unread_count > 0 && (
-                    <Badge count={chat.unread_count} />
-                  )}
-                </List.Item>
-              )}
-              locale={{ emptyText: 'Chưa có cuộc trò chuyện nào' }}
-            />
-          </Card>
-        </Col>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
 
-        {/* Online Users */}
-        <Col xs={24} lg={12}>
-          <Card title="Người dùng đang online">
-            <List
-              dataSource={Array.isArray(data.onlineUsers) ? data.onlineUsers : []}
-              renderItem={(user) => (
-                <List.Item
-                  onClick={() => navigate(`/chat/${user.id}`)}
-                  style={{ cursor: 'pointer' }}
+        {/* Features */}
+        <div style={{ 
+          padding: '80px 50px',
+          background: `linear-gradient(180deg, #fff 0%, ${token.colorBgLayout} 100%)`
+        }}>
+          <Row justify="center" style={{ marginBottom: 60 }}>
+            <Col xs={24} md={16} style={{ textAlign: 'center' }}>
+              <Title level={2}>Tính năng nổi bật</Title>
+              <Paragraph style={{ fontSize: 16, color: token.colorTextSecondary }}>
+                Khám phá những tính năng độc đáo và thú vị của Love Chat
+              </Paragraph>
+            </Col>
+          </Row>
+          
+          <Row gutter={[32, 32]} justify="center">
+            {features.map((feature, index) => (
+              <Col key={index} xs={24} sm={12} md={6}>
+                <Card
+                  hoverable
+                  style={{ 
+                    height: '100%',
+                    borderRadius: 16,
+                    border: `1px solid ${token.colorBorder}`
+                  }}
+                  styles={{ body: { 
+                    padding: '32px 24px',
+                    textAlign: 'center'
+                  } }}
                 >
-                  <List.Item.Meta
-                    avatar={
-                      <Badge dot status="success">
-                        <Avatar icon={<UserOutlined />} />
-                      </Badge>
-                    }
-                    title={user.username}
-                    description="Đang online"
-                  />
-                  <Button 
-                    type="primary" 
-                    size="small"
-                    icon={<MessageOutlined />}
-                  >
-                    Nhắn tin
-                  </Button>
-                </List.Item>
-              )}
-              locale={{ emptyText: 'Không có ai online' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+                  <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <div style={{ 
+                      width: 64,
+                      height: 64,
+                      borderRadius: '50%',
+                      background: `${token.colorPrimary}10`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto'
+                    }}>
+                      {feature.icon}
+                    </div>
+                    <Title level={4} style={{ margin: 0 }}>
+                      {feature.title}
+                    </Title>
+                    <Paragraph style={{ 
+                      margin: 0,
+                      color: token.colorTextSecondary 
+                    }}>
+                      {feature.description}
+                    </Paragraph>
+                  </Space>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
 
-      {/* Quick Actions */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col span={24}>
-          <Card title="Hành động nhanh">
-            <Space wrap>
-              <Button 
-                type="primary" 
-                icon={<MessageOutlined />}
-                onClick={() => navigate('/chat')}
-              >
-                Bắt đầu trò chuyện
-              </Button>
-              <Button 
-                icon={<PlayCircleOutlined />}
-                onClick={() => navigate('/caro')}
-              >
-                Chơi game Caro
-              </Button>
-              <Button 
-                icon={<BugOutlined />}
-                onClick={() => navigate('/farm')}
-              >
-                Chăm sóc trang trại
-              </Button>
-              <Button 
-                icon={<WalletOutlined />}
-                onClick={() => navigate('/wallet')}
-              >
-                Kiểm tra ví tiền
-              </Button>
+        {/* Testimonials */}
+        <div style={{ padding: '80px 50px', background: '#fff' }}>
+          <Row justify="center" style={{ marginBottom: 60 }}>
+            <Col xs={24} md={16} style={{ textAlign: 'center' }}>
+              <Title level={2}>Người dùng nói gì</Title>
+              <Paragraph style={{ fontSize: 16, color: token.colorTextSecondary }}>
+                Cảm nhận từ những người dùng thực sự của Love Chat
+              </Paragraph>
+            </Col>
+          </Row>
+          
+          <Row gutter={[32, 32]} justify="center">
+            {testimonials.map((testimonial, index) => (
+              <Col key={index} xs={24} md={8}>
+                <Card
+                  style={{ 
+                    height: '100%',
+                    borderRadius: 16
+                  }}
+                  styles={{ body: { padding: '32px 24px' } }}
+                >
+                  <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <Space direction="vertical" size="small">
+                        <Avatar size={64} icon={testimonial.avatar} />
+                        <Text strong>{testimonial.name}</Text>
+                        <div>
+                          {[...Array(5)].map((_, i) => (
+                            <StarFilled 
+                              key={i}
+                              style={{ 
+                                color: '#fadb14',
+                                fontSize: 16,
+                                marginRight: 2
+                              }} 
+                            />
+                          ))}
+                        </div>
+                      </Space>
+                    </div>
+                    <Paragraph style={{ 
+                      textAlign: 'center',
+                      fontStyle: 'italic',
+                      margin: 0,
+                      color: token.colorTextSecondary
+                    }}>
+                      "{testimonial.comment}"
+                    </Paragraph>
+                  </Space>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      </Content>
+
+      {/* Footer */}
+      <Footer style={{ 
+        background: '#001529',
+        color: '#fff',
+        padding: '40px 50px 20px'
+      }}>
+        <Row gutter={[32, 32]}>
+          <Col xs={24} md={8}>
+            <Space direction="vertical" size="middle">
+              <Text strong style={{ color: '#fff', fontSize: 18 }}>
+                Love Chat
+              </Text>
+              <Paragraph style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                Nền tảng kết nối yêu thương, tạo ra những trải nghiệm tuyệt vời cho người dùng.
+              </Paragraph>
             </Space>
-          </Card>
-        </Col>
-      </Row>
-    </div>
+          </Col>
+          <Col xs={24} md={8}>
+            <Space direction="vertical" size="middle">
+              <Text strong style={{ color: '#fff' }}>Liên kết nhanh</Text>
+              <Space direction="vertical">
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  Trang chủ
+                </Text>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  Tính năng
+                </Text>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  Về chúng tôi
+                </Text>
+              </Space>
+            </Space>
+          </Col>
+          <Col xs={24} md={8}>
+            <Space direction="vertical" size="middle">
+              <Text strong style={{ color: '#fff' }}>Liên hệ</Text>
+              <Space direction="vertical">
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  Email: hello@lovechat.com
+                </Text>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  Hotline: 1900 xxxx
+                </Text>
+              </Space>
+            </Space>
+          </Col>
+        </Row>
+        
+        <Divider style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }} />
+        
+        <div style={{ textAlign: 'center' }}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+            © 2024 Love Chat. All rights reserved.
+          </Text>
+        </div>
+      </Footer>
+    </Layout>
   )
 }

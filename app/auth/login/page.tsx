@@ -1,5 +1,8 @@
+"use client"
+
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { 
   Card, 
   Form, 
@@ -18,7 +21,7 @@ import {
   EyeInvisibleOutlined,
   EyeTwoTone
 } from '@ant-design/icons'
-import { useAuth } from '../../../context/AuthContext'
+import { useAuth } from '../../../contexts/auth-context'
 
 const { Title, Text } = Typography
 
@@ -33,12 +36,18 @@ export default function LoginPage() {
   const { login } = useAuth()
   const { token } = theme.useToken()
   const [form] = Form.useForm()
+  const router = useRouter()
 
   const onFinish = async (values: LoginFormValues) => {
     setLoading(true)
     setError(null)
     try {
-      await login(values.username, values.password)
+      const success = await login(values.username, values.password)
+      if (success) {
+        router.push('/') // Redirect to home page after successful login
+      } else {
+        setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.')
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại')
     } finally {
@@ -147,7 +156,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center' }}>
           <Text type="secondary">
             Chưa có tài khoản?{' '}
-            <Link to="/register" style={{ color: '#1890ff' }}>
+            <Link href="/auth/register" style={{ color: '#1890ff' }}>
               Đăng ký ngay
             </Link>
           </Text>
