@@ -1,65 +1,329 @@
-import Image from "next/image";
+import { useState, useEffect } from 'react'
+import { Row, Col, Card, Statistic, List, Avatar, Button, Typography, Space, Badge, Spin} from 'antd'
+import { MessageOutlined, PlayCircleOutlined, BugOutlined, WalletOutlined, UserOutlined, TrophyOutlined} from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import { chatAPI, caroAPI, farmAPI, walletAPI } from '../services/api'
 
-export default function Home() {
+const { Title, Text } = Typography
+
+// Types
+interface User {
+  id: number
+  username: string
+  is_online?: boolean
+}
+
+interface Message {
+  id: number
+  content: string
+  created_at: string
+}
+
+interface Chat {
+  id: number
+  other_user?: User
+  latest_message?: Message
+  unread_count: number
+}
+
+interface GameStats {
+  games_won?: number
+  games_played?: number
+  win_rate?: number
+}
+
+interface FarmStats {
+  level?: number
+  coins?: number
+  plants?: number
+}
+
+interface WalletStats {
+  current_balance?: number
+  total_transactions?: number
+}
+
+interface HomeData {
+  recentChats: Chat[]
+  gameStats: GameStats
+  farmStats: FarmStats
+  walletStats: WalletStats
+  onlineUsers: User[]
+}
+
+export default function HomePage() {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<HomeData>({
+    recentChats: [],
+    gameStats: {},
+    farmStats: {},
+    walletStats: {},
+    onlineUsers: []
+  })
+
+  useEffect(() => {
+    loadHomeData()
+  }, [])
+
+  const loadHomeData = async () => {
+    try {
+      setLoading(true)
+      
+      // Load data from multiple APIs
+      const [chatsRes, usersRes] = await Promise.all([
+        chatAPI.getPrivateChats().catch(() => ({ data: [] })),
+        chatAPI.getUsers().catch(() => ({ data: [] }))
+      ])
+
+      // Try to load game, farm, and wallet stats (may fail if not implemented)
+      let gameStats = {}
+      let farmStats = {}
+      let walletStats = {}
+
+      try {
+        const gameRes = await caroAPI.getStats()
+        gameStats = gameRes.data
+      } catch (error) {
+        console.log('Game stats not available')
+      }
+
+      try {
+        const farmRes = await farmAPI.getStats()
+        farmStats = farmRes.data
+      } catch (error) {
+        console.log('Farm stats not available')
+      }
+
+      try {
+        const walletRes = await walletAPI.getStats()
+        walletStats = walletRes.data
+      } catch (error) {
+        console.log('Wallet stats not available')
+      }
+
+      setData({
+        recentChats: Array.isArray(chatsRes.data) ? chatsRes.data.slice(0, 5) : [],
+        gameStats,
+        farmStats,
+        walletStats,
+        onlineUsers: Array.isArray(usersRes.data) ? usersRes.data.filter((user: User) => user.is_online).slice(0, 10) : []
+      })
+    } catch (error) {
+      console.error('Error loading home data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '50vh' 
+      }}>
+        <Spin size="large" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={2}>
+          <Space>
+            <span>☁️</span>
+            Chào mừng đến với Love Chat!
+          </Space>
+        </Title>
+        <Text type="secondary">
+          Kết nối, trò chuyện và vui chơi cùng bạn bè
+        </Text>
+      </div>
+
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Tin nhắn"
+              value={data.recentChats.length}
+              prefix={<MessageOutlined style={{ color: '#1890ff' }} />}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <Button 
+              type="link" 
+              onClick={() => navigate('/chat')}
+              style={{ padding: 0, marginTop: 8 }}
+            >
+              Xem tất cả
+            </Button>
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Trận thắng"
+              value={data.gameStats.games_won || 0}
+              prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
+            />
+            <Button 
+              type="link" 
+              onClick={() => navigate('/caro')}
+              style={{ padding: 0, marginTop: 8 }}
+            >
+              Chơi game
+            </Button>
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Cấp độ trang trại"
+              value={data.farmStats.level || 1}
+              prefix={<BugOutlined style={{ color: '#fa8c16' }} />}
+            />
+            <Button 
+              type="link" 
+              onClick={() => navigate('/farm')}
+              style={{ padding: 0, marginTop: 8 }}
+            >
+              Vào trang trại
+            </Button>
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Số dư ví"
+              value={data.walletStats.current_balance || 0}
+              prefix={<WalletOutlined style={{ color: '#1890ff' }} />}
+              suffix="đ"
+            />
+            <Button 
+              type="link" 
+              onClick={() => navigate('/wallet')}
+              style={{ padding: 0, marginTop: 8 }}
+            >
+              Quản lý ví
+            </Button>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        {/* Recent Chats */}
+        <Col xs={24} lg={12}>
+          <Card 
+            title="Tin nhắn gần đây" 
+            extra={
+              <Button type="link" onClick={() => navigate('/chat')}>
+                Xem tất cả
+              </Button>
+            }
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <List
+              dataSource={Array.isArray(data.recentChats) ? data.recentChats : []}
+              renderItem={(chat) => (
+                <List.Item
+                  onClick={() => navigate(`/chat/${chat.other_user?.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <List.Item.Meta
+                    avatar={
+                      <Badge dot={chat.unread_count > 0} status="processing">
+                        <Avatar icon={<UserOutlined />} />
+                      </Badge>
+                    }
+                    title={chat.other_user?.username || 'Người dùng'}
+                    description={
+                      chat.latest_message ? 
+                        `${chat.latest_message.content.slice(0, 50)}...` : 
+                        'Chưa có tin nhắn'
+                    }
+                  />
+                  {chat.unread_count > 0 && (
+                    <Badge count={chat.unread_count} />
+                  )}
+                </List.Item>
+              )}
+              locale={{ emptyText: 'Chưa có cuộc trò chuyện nào' }}
+            />
+          </Card>
+        </Col>
+
+        {/* Online Users */}
+        <Col xs={24} lg={12}>
+          <Card title="Người dùng đang online">
+            <List
+              dataSource={Array.isArray(data.onlineUsers) ? data.onlineUsers : []}
+              renderItem={(user) => (
+                <List.Item
+                  onClick={() => navigate(`/chat/${user.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <List.Item.Meta
+                    avatar={
+                      <Badge dot status="success">
+                        <Avatar icon={<UserOutlined />} />
+                      </Badge>
+                    }
+                    title={user.username}
+                    description="Đang online"
+                  />
+                  <Button 
+                    type="primary" 
+                    size="small"
+                    icon={<MessageOutlined />}
+                  >
+                    Nhắn tin
+                  </Button>
+                </List.Item>
+              )}
+              locale={{ emptyText: 'Không có ai online' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Quick Actions */}
+      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+        <Col span={24}>
+          <Card title="Hành động nhanh">
+            <Space wrap>
+              <Button 
+                type="primary" 
+                icon={<MessageOutlined />}
+                onClick={() => navigate('/chat')}
+              >
+                Bắt đầu trò chuyện
+              </Button>
+              <Button 
+                icon={<PlayCircleOutlined />}
+                onClick={() => navigate('/caro')}
+              >
+                Chơi game Caro
+              </Button>
+              <Button 
+                icon={<BugOutlined />}
+                onClick={() => navigate('/farm')}
+              >
+                Chăm sóc trang trại
+              </Button>
+              <Button 
+                icon={<WalletOutlined />}
+                onClick={() => navigate('/wallet')}
+              >
+                Kiểm tra ví tiền
+              </Button>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
     </div>
-  );
+  )
 }
