@@ -36,7 +36,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const { user } = useAuth()
 
   useEffect(() => {
-    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001"
+    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8000"
     const newSocket = io(SOCKET_URL, {
       auth: user ? {
         userId: user.id,

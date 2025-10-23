@@ -1,27 +1,13 @@
+"use client"
+
 import { useState, useEffect } from 'react'
-import {
-  Row,
-  Col,
-  Card,
-  List,
-  Avatar,
-  Input,
-  Button,
-  Typography,
-  Space,
-  Badge,
-  Spin,
-  App,
-  Empty
-} from 'antd'
-import {
-  SendOutlined,
-  UserOutlined,
-  MessageOutlined
-} from '@ant-design/icons'
+import { useParams, useRouter } from 'next/navigation'
+import { Row, Col, Card, List, Avatar, Input, Button, Typography, Space, Badge, Spin, App, Empty } from 'antd'
+import { SendOutlined, UserOutlined, MessageOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import '../../styles/Chat.css'
+import ProtectedRoute from '../../components/ProtectedRoute'
+import { apiClient } from '../../lib/api-client'
 
 // Add relativeTime plugin for dayjs
 dayjs.extend(relativeTime)
@@ -53,9 +39,9 @@ interface PrivateChat {
 const { TextArea } = Input
 const { Text } = Typography
 
-export default function ChatPage() {
-  const { userId } = useParams()
-  const navigate = useNavigate()
+function ChatPageContent() {
+  const params = useParams()
+  const router = useRouter()
   const { message } = App.useApp()
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -64,6 +50,21 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [currentChat, setCurrentChat] = useState<PrivateChat | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  
+  const userId = params?.userId as string
+
+  // Debug auth state
+  useEffect(() => {
+    console.log("🔍 ChatPageContent mounted")
+    const token = localStorage.getItem("chat-token")
+    console.log("🔑 Current token:", token ? "exists" : "missing")
+    
+    if (!token) {
+      console.log("❌ No token found, should redirect to login")
+    } else {
+      console.log("✅ Token found, proceeding with chat loading")
+    }
+  }, [])
 
   useEffect(() => {
     loadUsers()
@@ -77,9 +78,11 @@ export default function ChatPage() {
 
   const loadUsers = async () => {
     try {
-      const response = await chatAPI.getUsers()
-      console.log('Users API Response:', response.data)
-      setUsers(Array.isArray(response.data) ? response.data : [])
+      const response = await apiClient.getChatUsers()
+      console.log('Users API Response:', response)
+      // Response should have online_users array
+      const usersData = response.online_users || response
+      setUsers(Array.isArray(usersData) ? usersData : [])
     } catch (error) {
       console.error('Error loading users:', error)
       message.error('Không thể tải danh sách người dùng')
@@ -107,16 +110,16 @@ export default function ChatPage() {
       }
 
       // Create or get existing chat
-      const chatResponse = await chatAPI.createPrivateChat(numericUserId)
-      console.log('Chat API Response:', chatResponse.data)
-      setCurrentChat(chatResponse.data)
+      const chatResponse = await apiClient.createPrivateChat(numericUserId)
+      console.log('Chat API Response:', chatResponse)
+      setCurrentChat(chatResponse.chat)
 
       // Load messages for this chat
-      const messagesResponse = await chatAPI.getMessages(chatResponse.data.id)
-      console.log('Messages API Response:', messagesResponse.data)
-      setMessages(Array.isArray(messagesResponse.data) ? messagesResponse.data : [])
+      const messagesResponse = await apiClient.getMessages(chatResponse.chat.id)
+      console.log('Messages API Response:', messagesResponse)
+      setMessages(Array.isArray(messagesResponse) ? messagesResponse : [])
       
-      navigate(`/chat/${selectedUserId}`)
+      router.push(`/chat/${selectedUserId}`)
     } catch (error) {
       console.error('Error selecting user:', error)
       message.error('Không thể tải cuộc trò chuyện')
@@ -130,11 +133,11 @@ export default function ChatPage() {
 
     try {
       setSending(true)
-      const response = await chatAPI.sendMessage(currentChat.id, messageText.trim())
+      const response = await apiClient.sendMessage(currentChat.id, messageText.trim())
       
-      // Add new message to the list (ensure response.data exists)
-      if (response.data) {
-        setMessages(prev => Array.isArray(prev) ? [...prev, response.data] : [response.data])
+      // Add new message to the list (ensure response exists)
+      if (response) {
+        setMessages(prev => Array.isArray(prev) ? [...prev, response] : [response])
       }
       setMessageText('')
     } catch (error) {
@@ -287,5 +290,16 @@ export default function ChatPage() {
         </Card>
       </Col>
     </Row>
+  )
+}
+
+export default function ChatPage() {
+  console.log("📄 ChatPage: Component rendering");
+  
+  return (
+    // TEMPORARY: Removed ProtectedRoute for debugging
+    <div style={{ padding: '24px' }}>
+      <ChatPageContent />
+    </div>
   )
 }

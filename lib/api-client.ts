@@ -31,8 +31,19 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     }
 
+    // Always get the latest token from storage before making request
+    if (typeof window !== "undefined") {
+      const latestToken = localStorage.getItem("chat-token")
+      if (latestToken) {
+        this.token = latestToken
+      }
+    }
+
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`
+      console.log("🔐 API Request with token:", this.token.substring(0, 20) + "...")
+    } else {
+      console.log("⚠️ API Request without token")
     }
 
     try {
@@ -43,6 +54,7 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: "Network error" }))
+        console.error("❌ API Error Response:", response.status, error)
         throw new Error(error.error || `HTTP ${response.status}`)
       }
 
@@ -80,170 +92,101 @@ class ApiClient {
     })
   }
 
-  // Categories
-  async getCategories() {
-    return this.request<{ categories: any[] }>("/api/categories")
+  // Chat APIs
+  async getChatUsers() {
+    return this.request<{ online_users: any[]; online_user_ids: number[] }>("/api/chat/online-users/")
   }
 
-  async createCategory(categoryData: any) {
-    return this.request<any>("/api/categories", {
+  async getOnlineUsers() {
+    return this.request<{ online_users: any[]; online_user_ids: number[] }>("/api/chat/online-users/")
+  }
+
+  async createPrivateChat(userId: number) {
+    return this.request<{ chat: any; created: boolean }>("/api/chat/start-chat/", {
       method: "POST",
-      body: JSON.stringify(categoryData),
+      body: JSON.stringify({ user_id: userId }),
     })
   }
 
-  async deleteCategory(id: string) {
-    return this.request<any>(`/api/categories/${id}`, {
-      method: "DELETE",
+  async getPrivateChats() {
+    return this.request<any[]>("/api/chat/chats/")
+  }
+
+  async getMessages(chatId?: number) {
+    const endpoint = chatId ? `/api/chat/messages/?chat=${chatId}` : "/api/chat/messages/"
+    return this.request<any[]>(endpoint)
+  }
+
+  async sendMessage(chatId: number, content: string) {
+    return this.request<any>("/api/chat/messages/", {
+      method: "POST",
+      body: JSON.stringify({ chat: chatId, content }),
     })
   }
 
-  // Auctions
-  async getAuctions(params?: { category?: string; status?: string; search?: string }) {
-    const searchParams = new URLSearchParams()
-    if (params?.category) searchParams.set("category", params.category)
-    if (params?.status) searchParams.set("status", params.status)
-    if (params?.search) searchParams.set("search", params.search)
-    
-    const query = searchParams.toString()
-    return this.request<{ auctions: any[] }>(`/api/auctions${query ? `?${query}` : ""}`)
+  async markMessagesAsRead(chatId: number) {
+    return this.request<{ status: string }>(`/chats/${chatId}/mark_read/`, {
+      method: "POST",
+    })
   }
 
-  async getAuction(id: string) {
-    return this.request<{ auction: any; bids: any[] }>(`/api/auctions/${id}`)
+  async updateActivity() {
+    return this.request<{ status: string }>("/update-activity/", {
+      method: "POST",
+    })
   }
 
-  async createAuction(data: any) {
-    return this.request<{ auction: any; message: string }>("/api/auctions", {
+  // User Management APIs
+  async getAllUsers() {
+    return this.request<any[]>("/users/")
+  }
+
+  async getUserProfile(userId?: number) {
+    const endpoint = userId ? `/profiles/${userId}/` : "/profiles/me/"
+    return this.request<any>(endpoint)
+  }
+
+  async updateUserProfile(data: any) {
+    return this.request<any>("/profiles/update_me/", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    })
+  }
+
+  // Game APIs (future expansion)
+  async getCaroGames() {
+    return this.request<any[]>("/api/caro/games/")
+  }
+
+  async createCaroGame(data: any) {
+    return this.request<any>("/api/caro/games/", {
       method: "POST",
       body: JSON.stringify(data),
     })
   }
 
-  async updateAuction(id: string, data: any) {
-    return this.request<{ auction: any; message: string }>(`/api/auctions/${id}`, {
-      method: "PUT",
+  // Farm APIs (future expansion)
+  async getFarmData() {
+    return this.request<any>("/api/farm/")
+  }
+
+  async updateFarm(data: any) {
+    return this.request<any>("/api/farm/", {
+      method: "PATCH",
       body: JSON.stringify(data),
     })
   }
 
-  async deleteAuction(id: string) {
-    return this.request<{ message: string }>(`/api/auctions/${id}`, {
-      method: "DELETE",
-    })
+  // Wallet APIs (future expansion)
+  async getWallet() {
+    return this.request<any>("/api/wallet/")
   }
 
-  // Bids
-  async placeBid(auctionId: string, amount: number) {
-    return this.request<{ bid: any; auction: any; message: string }>(`/api/auctions/${auctionId}/bids`, {
+  async addTransaction(data: any) {
+    return this.request<any>("/api/wallet/transactions/", {
       method: "POST",
-      body: JSON.stringify({ amount }),
-    })
-  }
-
-  async getBids(auctionId: string) {
-    return this.request<{ bids: any[] }>(`/api/auctions/${auctionId}/bids`)
-  }
-
-  // File upload endpoint
-  async uploadUserDocument(auctionId: string, file: File) {
-    const formData = new FormData()
-    formData.append('document', file)
-    formData.append('auctionId', auctionId)
-    
-    const headers: Record<string, string> = {}
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`
-    }
-
-    const response = await fetch(`${this.baseURL}/api/auctions/${auctionId}/user-documents`, {
-      method: 'POST',
-      body: formData,
-      headers,
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Upload failed" }))
-      throw new Error(error.error || `HTTP ${response.status}`)
-    }
-
-    return response.json()
-  }
-
-  // Get user documents for auction
-  async getUserDocuments(auctionId: string) {
-    return this.request<any>(`/api/auctions/${auctionId}/user-documents`)
-  }
-
-  // Delete user document
-  async deleteUserDocument(auctionId: string, documentId: string) {
-    return this.request<any>(`/api/auctions/${auctionId}/user-documents/${documentId}`, {
-      method: 'DELETE'
-    })
-  }
-
-  // Admin endpoints
-  async getAdminDashboard() {
-    return this.request<{ stats: any; recentAuctions: any[]; recentUsers: any[] }>("/api/admin/dashboard")
-  }
-
-  async getAdminAuctions() {
-    return this.request<{ auctions: any[] }>("/api/auctions")
-  }
-
-  async getUsers() {
-    return this.request<{ users: any[] }>("/api/admin/users")
-  }
-
-  async getUserDetails(id: string) {
-    return this.request<{ user: any; stats: any }>(`/api/admin/users/${id}`)
-  }
-
-  async updateUser(id: string, data: any) {
-    return this.request<{ user: any; message: string }>(`/api/admin/users/${id}`, {
-      method: "PUT",
       body: JSON.stringify(data),
     })
-  }
-
-  async deleteUser(id: string) {
-    return this.request<{ message: string }>(`/api/admin/users/${id}`, {
-      method: "DELETE",
-    })
-  }
-
-  async bulkUpdateUsers(userIds: string[], updates: any) {
-    return this.request<{ message: string; updatedCount: number }>("/api/admin/users/bulk", {
-      method: "PUT", 
-      body: JSON.stringify({ userIds, updates }),
-    })
-  }
-
-  async getUserStats(id: string) {
-    return this.request<{ 
-      totalAuctions: number; 
-      totalBids: number; 
-      winCount: number; 
-      totalSpent: number 
-    }>(`/api/admin/users/${id}/stats`)
-  }
-
-  // User profile management
-  async updateProfile(data: any) {
-    return this.request<{ user: any; message: string }>("/api/auth/profile", {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
-  }
-
-  async getUserAuctions(userId?: string) {
-    const endpoint = userId ? `/api/admin/users/${userId}/auctions` : "/api/auth/my-auctions"
-    return this.request<{ auctions: any[] }>(endpoint)
-  }
-
-  async getUserBids(userId?: string) {
-    const endpoint = userId ? `/api/admin/users/${userId}/bids` : "/api/auth/my-bids"
-    return this.request<{ bids: any[] }>(endpoint)
   }
 
   // Generic HTTP methods

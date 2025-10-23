@@ -67,8 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.login(username, password)
       setUser(response.user)
       apiClient.setToken(response.access)
-      // Store refresh token separately
-      localStorage.setItem("chat-refresh-token", response.refresh)
       setIsLoading(false)
       return true
     } catch (error) {
@@ -85,8 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.register(username, password, email, first_name, last_name)
       setUser(response.user)
       apiClient.setToken(response.access)
-      // Store refresh token separately
-      localStorage.setItem("chat-refresh-token", response.refresh)
       setIsLoading(false)
       return true
     } catch (error) {
@@ -100,7 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
     apiClient.setToken(null)
     localStorage.removeItem("chat-token")
-    localStorage.removeItem("chat-refresh-token")
   }
 
   return <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>{children}</AuthContext.Provider>

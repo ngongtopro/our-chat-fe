@@ -5,6 +5,7 @@ import { UserOutlined, LogoutOutlined, InfoCircleOutlined, WalletOutlined, Login
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import type { MenuProps } from 'antd';
 import { useAuth } from '../contexts/auth-context';
 
@@ -13,6 +14,11 @@ const { Header } = Layout;
 const HeaderComponent = () => {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
+  
+  // Only log when user changes, not on every render
+  useEffect(() => {
+    console.log('Header: user updated =>', user ? user.username : 'null', 'isLoading:', isLoading);
+  }, [user, isLoading]);
 
   const handleLogout = () => {
     logout();
@@ -57,7 +63,7 @@ const HeaderComponent = () => {
             <Space style={{ cursor: 'pointer' }}>
               <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#40a9ff' }} />
               <span style={{ color: '#fff', fontSize: '16px' }}>
-                {user.first_name} {user.last_name}
+                {user.first_name || user.last_name ? `${user.first_name} ${user.last_name}` : user.username}
               </span>
             </Space>
           </Button>

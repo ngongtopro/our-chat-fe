@@ -1,40 +1,12 @@
 import React from 'react'
-import { 
-  Layout, 
-  Button, 
-  Typography, 
-  Row, 
-  Col, 
-  Card, 
-  Space, 
-  Divider,
-  Statistic,
-  Avatar,
-  theme
-} from 'antd'
-import {
-  CloudOutlined,
-  MessageOutlined,
-  PlayCircleOutlined,
-  BugOutlined,
-  WalletOutlined,
-  UserOutlined,
-  TrophyOutlined,
-  TeamOutlined,
-  SafetyCertificateOutlined,
-  ThunderboltOutlined,
-  SmileOutlined,
-  RightOutlined,
-  StarFilled
-} from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
-import HeroSection from '../components/HeroSection'
+import { Layout, Typography, Row, Col, Card, Space, Divider, Statistic, Avatar, theme } from 'antd'
+import { MessageOutlined, PlayCircleOutlined, BugOutlined, WalletOutlined, UserOutlined, StarFilled} from '@ant-design/icons'
+import HeroSection from '@/components/HeroSection'
 
-const { Header, Content, Footer } = Layout
+const { Content, Footer } = Layout
 const { Title, Paragraph, Text } = Typography
 
 const LandingPage: React.FC = () => {
-  const navigate = useNavigate()
   const { token } = theme.useToken()
 
   const features = [
@@ -87,44 +59,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <Layout className="landing-page">
-      {/* Header */}
-      <Header style={{ 
-        background: 'rgba(255, 255, 255, 0.95)', 
-        backdropFilter: 'blur(10px)',
-        position: 'fixed',
-        top: 0,
-        width: '100%',
-        zIndex: 1000,
-        borderBottom: '1px solid #f0f0f0',
-        padding: '0 50px'
-      }}>
-        <Row justify="space-between" align="middle" style={{ height: '100%' }}>
-          <Col>
-            <Space align="center">
-              <CloudOutlined style={{ fontSize: 32, color: token.colorPrimary }} />
-              <Title level={3} style={{ margin: 0, color: token.colorPrimary }}>
-                Love Chat
-              </Title>
-            </Space>
-          </Col>
-          <Col>
-            <Space size="large">
-              <Button type="text" size="large">Tính năng</Button>
-              <Button type="text" size="large">Về chúng tôi</Button>
-              <Button type="text" size="large">Liên hệ</Button>
-              <Button 
-                type="primary" 
-                size="large"
-                onClick={() => navigate('/login')}
-              >
-                Đăng nhập
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Header>
-
-      <Content style={{ marginTop: 64 }}>
+      <Content style={{ marginTop: -64 }}>
         {/* Hero Section */}
         <HeroSection />
 
@@ -134,9 +69,9 @@ const LandingPage: React.FC = () => {
             {stats.map((stat, index) => (
               <Col key={index} xs={12} md={6}>
                 <Card 
-                  bordered={false}
+                  variant="borderless"
                   style={{ textAlign: 'center', height: '100%' }}
-                  bodyStyle={{ padding: '32px 16px' }}
+                  styles={{ body: { padding: '32px 16px' } }}
                 >
                   <Statistic
                     title={stat.title}
@@ -179,10 +114,10 @@ const LandingPage: React.FC = () => {
                     borderRadius: 16,
                     border: `1px solid ${token.colorBorder}`
                   }}
-                  bodyStyle={{ 
+                  styles={{ body: { 
                     padding: '32px 24px',
                     textAlign: 'center'
-                  }}
+                  } }}
                 >
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <div style={{ 
@@ -232,7 +167,7 @@ const LandingPage: React.FC = () => {
                     height: '100%',
                     borderRadius: 16
                   }}
-                  bodyStyle={{ padding: '32px 24px' }}
+                  styles={{ body: { padding: '32px 24px' } }}
                 >
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <div style={{ textAlign: 'center' }}>
@@ -267,50 +202,6 @@ const LandingPage: React.FC = () => {
             ))}
           </Row>
         </div>
-
-        {/* CTA Section */}
-        <div style={{
-          background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #40a9ff 100%)`,
-          padding: '80px 50px',
-          textAlign: 'center',
-          color: '#fff'
-        }}>
-          <Row justify="center">
-            <Col xs={24} md={16}>
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <Title level={2} style={{ color: '#fff', margin: 0 }}>
-                  Sẵn sàng bắt đầu chưa?
-                </Title>
-                <Paragraph style={{ 
-                  fontSize: 18,
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  margin: 0
-                }}>
-                  Tham gia cộng đồng Love Chat ngay hôm nay và khám phá thế giới kết nối mới!
-                </Paragraph>
-                <div>
-                  <Button 
-                    type="primary"
-                    size="large"
-                    ghost
-                    icon={<RightOutlined />}
-                    onClick={() => navigate('/register')}
-                    style={{ 
-                      height: 56,
-                      padding: '0 32px',
-                      fontSize: 16,
-                      borderRadius: 28,
-                      borderColor: '#fff',
-                      color: '#fff'
-                    }}
-                  >
-                    Đăng ký miễn phí
-                  </Button>
-                </div>
-              </Space>
-            </Col>
-          </Row>
-        </div>
       </Content>
 
       {/* Footer */}
@@ -322,12 +213,9 @@ const LandingPage: React.FC = () => {
         <Row gutter={[32, 32]}>
           <Col xs={24} md={8}>
             <Space direction="vertical" size="middle">
-              <Space align="center">
-                <CloudOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
-                <Text strong style={{ color: '#fff', fontSize: 18 }}>
-                  Love Chat
-                </Text>
-              </Space>
+              <Text strong style={{ color: '#fff', fontSize: 18 }}>
+                Love Chat
+              </Text>
               <Paragraph style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                 Nền tảng kết nối yêu thương, tạo ra những trải nghiệm tuyệt vời cho người dùng.
               </Paragraph>
@@ -337,15 +225,15 @@ const LandingPage: React.FC = () => {
             <Space direction="vertical" size="middle">
               <Text strong style={{ color: '#fff' }}>Liên kết nhanh</Text>
               <Space direction="vertical">
-                <Button type="link" style={{ color: 'rgba(255, 255, 255, 0.7)', padding: 0 }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                   Trang chủ
-                </Button>
-                <Button type="link" style={{ color: 'rgba(255, 255, 255, 0.7)', padding: 0 }}>
+                </Text>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                   Tính năng
-                </Button>
-                <Button type="link" style={{ color: 'rgba(255, 255, 255, 0.7)', padding: 0 }}>
+                </Text>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                   Về chúng tôi
-                </Button>
+                </Text>
               </Space>
             </Space>
           </Col>
