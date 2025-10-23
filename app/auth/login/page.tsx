@@ -44,11 +44,14 @@ export default function LoginPage() {
     try {
       const success = await login(values.username, values.password)
       if (success) {
+        // Verify token was saved
+        const savedToken = localStorage.getItem("chat-token")
         router.push('/') // Redirect to home page after successful login
       } else {
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.')
       }
     } catch (err: any) {
+      console.error("💥 Login error:", err)
       setError(err.message || 'Đăng nhập thất bại')
     } finally {
       setLoading(false)

@@ -294,12 +294,11 @@ function ChatPageContent() {
 }
 
 export default function ChatPage() {
-  console.log("📄 ChatPage: Component rendering");
-  
   return (
-    // TEMPORARY: Removed ProtectedRoute for debugging
-    <div style={{ padding: '24px' }}>
-      <ChatPageContent />
-    </div>
+    <ProtectedRoute>
+      <div style={{ padding: '24px' }}>
+        <ChatPageContent />
+      </div>
+    </ProtectedRoute>
   )
 }

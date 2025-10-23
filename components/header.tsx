@@ -5,20 +5,14 @@ import { UserOutlined, LogoutOutlined, InfoCircleOutlined, WalletOutlined, Login
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import type { MenuProps } from 'antd';
 import { useAuth } from '../contexts/auth-context';
 
 const { Header } = Layout;
 
 const HeaderComponent = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
-  
-  // Only log when user changes, not on every render
-  useEffect(() => {
-    console.log('Header: user updated =>', user ? user.username : 'null', 'isLoading:', isLoading);
-  }, [user, isLoading]);
 
   const handleLogout = () => {
     logout();
@@ -47,15 +41,6 @@ const HeaderComponent = () => {
   ];
 
   const renderUserSection = () => {
-    if (isLoading) {
-      return (
-        <Space>
-          <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#40a9ff' }} />
-          <span style={{ color: '#fff', fontSize: '16px' }}>Đang tải...</span>
-        </Space>
-      );
-    }
-
     if (user) {
       return (
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
@@ -90,24 +75,24 @@ const HeaderComponent = () => {
   return (
     <Header
       style={{
-        backgroundColor: user ? '#1890ff' : 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: user ? 'none' : 'blur(10px)',
+        backgroundColor: '#1890ff',
+        backdropFilter: 'none',
         padding: '0 50px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         height: '64px',
-        position: user ? 'static' : 'fixed',
-        top: user ? 'auto' : 0,
+        position: 'static',
+        top: 'auto',
         width: '100%',
         zIndex: 1000,
-        borderBottom: user ? 'none' : '1px solid #f0f0f0',
+        borderBottom: 'none',
       }}
     >
       <Link href="/">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <span style={{ 
-            color: user ? '#fff' : '#1890ff', 
+            color: '#fff', 
             fontSize: '20px', 
             fontWeight: 'bold' 
           }}>

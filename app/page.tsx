@@ -1,15 +1,13 @@
 "use client";
 
-import React from 'react'
-import { Layout, Typography, Row, Col, Card, Space, Divider, Statistic, Avatar, theme, Button } from 'antd'
-import { MessageOutlined, PlayCircleOutlined, BugOutlined, WalletOutlined, UserOutlined, StarFilled } from '@ant-design/icons'
+import { Layout, Typography, Row, Col, Card, Space, theme } from 'antd'
+import { MessageOutlined, PlayCircleOutlined, BugOutlined, WalletOutlined } from '@ant-design/icons'
 import Link from 'next/link'
-import HeroSection from '../components/HeroSection'
 import { useAuth } from '../contexts/auth-context'
 import LandingPage from './LandingPage'
 
-const { Content, Footer } = Layout
-const { Title, Paragraph, Text } = Typography
+const { Content } = Layout
+const { Title, Paragraph } = Typography
 
 export default function HomePage() {
   const { token } = theme.useToken()

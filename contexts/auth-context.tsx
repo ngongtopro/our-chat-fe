@@ -67,10 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.login(username, password)
       setUser(response.user)
       apiClient.setToken(response.access)
+      // Store tokens in localStorage
+      localStorage.setItem("chat-token", response.access)
+      localStorage.setItem("chat-refresh-token", response.refresh)
+      // Also store in cookies for middleware
+      document.cookie = `chat-token=${response.access}; path=/; max-age=86400; SameSite=Lax`
       setIsLoading(false)
       return true
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("❌ Login error:", error)
       setIsLoading(false)
       return false
     }
@@ -83,10 +88,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.register(username, password, email, first_name, last_name)
       setUser(response.user)
       apiClient.setToken(response.access)
+      // Store tokens in localStorage
+      localStorage.setItem("chat-token", response.access)
+      localStorage.setItem("chat-refresh-token", response.refresh)
+      // Also store in cookies for middleware
+      document.cookie = `chat-token=${response.access}; path=/; max-age=86400; SameSite=Lax`
       setIsLoading(false)
       return true
     } catch (error) {
-      console.error("Registration error:", error)
+      console.error("❌ Registration error:", error)
       setIsLoading(false)
       return false
     }
@@ -96,6 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
     apiClient.setToken(null)
     localStorage.removeItem("chat-token")
+    localStorage.removeItem("chat-refresh-token")
+    // Clear cookie
+    document.cookie = "chat-token=; path=/; max-age=0"
   }
 
   return <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>{children}</AuthContext.Provider>
