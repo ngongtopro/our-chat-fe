@@ -153,18 +153,6 @@ class ApiClient {
     })
   }
 
-  // Game APIs (future expansion)
-  async getCaroGames() {
-    return this.request<any[]>("/api/caro/games/")
-  }
-
-  async createCaroGame(data: any) {
-    return this.request<any>("/api/caro/games/", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
   // Farm APIs (future expansion)
   async getFarmData() {
     return this.request<any>("/api/farm/")

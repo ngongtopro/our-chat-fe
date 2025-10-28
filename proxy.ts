@@ -6,9 +6,28 @@ const protectedRoutes = ['/chat', '/profile', '/wallet', '/farm', '/caro']
 // Define auth routes that should redirect to home if user is already logged in
 const authRoutes = ['/auth/login', '/auth/register']
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get('chat-token')?.value
   const { pathname } = request.nextUrl
+
+  // Skip proxy for Next.js internal routes and static files
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.') // Skip files with extensions
+  ) {
+    return NextResponse.next()
+  }
+
+  // Allow auth routes without token (don't redirect)
+  if (authRoutes.some(route => pathname.startsWith(route))) {
+    if (token) {
+      // Only redirect to home if already authenticated
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+    // Allow access to auth routes when not authenticated
+    return NextResponse.next()
+  }
 
   // Check if it's a protected route
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
@@ -18,18 +37,10 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Check if it's an auth route
-  if (authRoutes.some(route => pathname.startsWith(route))) {
-    if (token) {
-      // Redirect to home if already authenticated
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-  }
-
   return NextResponse.next()
 }
 
-// Configure which routes should run the middleware
+// Configure which routes should run the proxy
 export const config = {
   matcher: [
     /*

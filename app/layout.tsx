@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Lexend } from "next/font/google";
 import 'antd/dist/reset.css'
-import HeaderComponent from "../components/header";
 import { AuthProvider } from "../contexts/auth-context";
+import { RealtimeProvider } from "../contexts/realtime-context";
+import AppShell from "../components/app-shell";
 
 const lexend = Lexend({
   variable: "--font-lexend",
@@ -10,8 +11,8 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "Our Chat",
-  description: "Cùng chat và chơi nào",
+  title: "Love Chat - Single Page App",
+  description: "Cùng chat và chơi nào - Always Connected",
 };
 
 export default function RootLayout({ 
@@ -22,10 +23,13 @@ export default function RootLayout({
 
   return (
     <html lang="vi">
-      <body className={`${lexend.variable} antialiased`}>
+      <body className={`${lexend.variable} antialiased`} suppressHydrationWarning>
         <AuthProvider>
-          <HeaderComponent />
-          {children}
+          <RealtimeProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </RealtimeProvider>
         </AuthProvider>
       </body>
     </html>

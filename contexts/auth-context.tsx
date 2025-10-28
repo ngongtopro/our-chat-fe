@@ -72,6 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("chat-refresh-token", response.refresh)
       // Also store in cookies for middleware
       document.cookie = `chat-token=${response.access}; path=/; max-age=86400; SameSite=Lax`
+      
+      // Trigger storage event for realtime connection
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'chat-token',
+        newValue: response.access,
+      }))
+      
+      console.log('✅ Login successful, realtime will connect automatically')
       setIsLoading(false)
       return true
     } catch (error) {
@@ -109,6 +117,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("chat-refresh-token")
     // Clear cookie
     document.cookie = "chat-token=; path=/; max-age=0"
+    
+    // Trigger storage event for realtime disconnection
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'chat-token',
+      newValue: null,
+    }))
+    
+    console.log('👋 Logout successful, realtime disconnected')
   }
 
   return <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>{children}</AuthContext.Provider>
