@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Row, Col, Card, List, Avatar, Input, Button, Typography, Space, Badge, Spin, App, Empty } from 'antd'
-import { SendOutlined, UserOutlined, MessageOutlined } from '@ant-design/icons'
+import { SendOutlined, UserOutlined, MessageOutlined, BookOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ProtectedRoute from '../../components/ProtectedRoute'
 import { apiClient } from '../../lib/api-client'
+import { useChatRealtime } from '../../lib/hooks/use-realtime'
+import { useAuth } from '../../contexts/auth-context'
 
 // Add relativeTime plugin for dayjs
 dayjs.extend(relativeTime)
@@ -40,18 +41,70 @@ const { TextArea } = Input
 const { Text } = Typography
 
 function ChatPageContent() {
-  const params = useParams()
-  const router = useRouter()
   const { message } = App.useApp()
-  const [loading, setLoading] = useState(true)
+  const { user: currentUser } = useAuth()
+  const [loading, setLoading] = useState(false) // Changed to false - load UI first
+  const [loadingUsers, setLoadingUsers] = useState(false) // Separate loading for users
   const [sending, setSending] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [users, setUsers] = useState<User[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [currentChat, setCurrentChat] = useState<PrivateChat | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  
-  const userId = params?.userId as string
+
+  // Use realtime hook for chat updates
+  const { newMessage, userStatusUpdate } = useChatRealtime()
+
+  // Handle realtime user status updates
+  useEffect(() => {
+    if (userStatusUpdate) {
+      setUsers(prevUsers => {
+        const updated = prevUsers.map(u => 
+          u.id === userStatusUpdate.user_id 
+            ? { ...u, is_online: userStatusUpdate.is_online }
+            : u
+        )
+        
+        // Re-sort: online users first
+        updated.sort((a, b) => {
+          if (a.is_online && !b.is_online) return -1
+          if (!a.is_online && b.is_online) return 1
+          return a.username.localeCompare(b.username)
+        })
+        
+        return updated
+      })
+      
+      // Show notification if selected user status changed
+      if (selectedUser?.id === userStatusUpdate.user_id) {
+        setSelectedUser(prev => prev ? { ...prev, is_online: userStatusUpdate.is_online } : null)
+        const status = userStatusUpdate.is_online ? 'đã online' : 'đã offline'
+        message.info(`${userStatusUpdate.username} ${status}`)
+      }
+    }
+  }, [userStatusUpdate, selectedUser])
+
+  // Handle realtime new messages
+  useEffect(() => {
+    if (newMessage && currentChat) {
+      // Check if message belongs to current chat
+      if (newMessage.chat === currentChat.id) {
+        setMessages(prev => {
+          // Avoid duplicates
+          const exists = prev.some(m => m.id === newMessage.id)
+          if (exists) return prev
+          
+          // Mark as own or other's message
+          const processedMessage = {
+            ...newMessage,
+            is_own_message: newMessage.sender?.id === parseInt(currentUser?.id || '0')
+          }
+          
+          return [...prev, processedMessage]
+        })
+      }
+    }
+  }, [newMessage, currentChat, currentUser])
 
   // Debug auth state
   useEffect(() => {
@@ -70,24 +123,56 @@ function ChatPageContent() {
     loadUsers()
   }, [])
 
-  useEffect(() => {
-    if (userId) {
-      selectUser(userId)
-    }
-  }, [userId])
-
   const loadUsers = async () => {
+    setLoadingUsers(true)
     try {
-      const response = await apiClient.getChatUsers()
-      console.log('Users API Response:', response)
-      // Response should have online_users array
-      const usersData = response.online_users || response
-      setUsers(Array.isArray(usersData) ? usersData : [])
+      // Get all user profiles which include online status
+      const response = await apiClient.get<any>('/api/chat/profiles/')
+      console.log('Profiles API Response:', response)
+      
+      // API returns paginated data: { count, next, previous, results }
+      const profilesList = response.results || response
+      
+      // Transform profile data to User type
+      let allUsers: User[] = Array.isArray(profilesList) 
+        ? profilesList.map((profile: any) => ({
+            id: profile.user?.id || 0,
+            username: profile.user?.username || profile.name || '',
+            email: profile.user?.email || '',
+            is_online: profile.is_online || false,
+            first_name: profile.user?.first_name || '',
+            last_name: profile.user?.last_name || '',
+          })).filter(u => u.id > 0) // Filter out invalid users
+        : []
+      
+      console.log('Transformed users:', allUsers)
+      
+      // Sort: online users first, then by username
+      allUsers.sort((a, b) => {
+        if (a.is_online && !b.is_online) return -1
+        if (!a.is_online && b.is_online) return 1
+        return a.username.localeCompare(b.username)
+      })
+      
+      // Add "Saved Messages" as first item (chat with yourself)
+      if (currentUser) {
+        const savedMessages: User = {
+          id: parseInt(currentUser.id),
+          username: 'Saved Messages',
+          email: currentUser.email || '',
+          is_online: true,
+          first_name: '💾',
+          last_name: 'Your Notes',
+        }
+        allUsers = [savedMessages, ...allUsers.filter(u => u.id !== parseInt(currentUser.id))]
+      }
+      
+      setUsers(allUsers)
     } catch (error) {
       console.error('Error loading users:', error)
       message.error('Không thể tải danh sách người dùng')
     } finally {
-      setLoading(false)
+      setLoadingUsers(false)
     }
   }
 
@@ -117,9 +202,23 @@ function ChatPageContent() {
       // Load messages for this chat
       const messagesResponse = await apiClient.getMessages(chatResponse.chat.id)
       console.log('Messages API Response:', messagesResponse)
-      setMessages(Array.isArray(messagesResponse) ? messagesResponse : [])
       
-      router.push(`/chat/${selectedUserId}`)
+      // Handle paginated response or direct array
+      let messagesList = Array.isArray(messagesResponse) 
+        ? messagesResponse 
+        : ((messagesResponse as any)?.results || [])
+      
+      // Mark messages as own or other's based on sender
+      messagesList = messagesList.map((msg: any) => ({
+        ...msg,
+        is_own_message: msg.sender?.id === parseInt(currentUser?.id || '0')
+      }))
+      
+      console.log('Processed messages:', messagesList)
+      setMessages(messagesList)
+      
+      // Don't navigate - just load messages in right container
+      // router.push(`/chat/${selectedUserId}`)
     } catch (error) {
       console.error('Error selecting user:', error)
       message.error('Không thể tải cuộc trò chuyện')
@@ -128,17 +227,17 @@ function ChatPageContent() {
     }
   }
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!messageText.trim() || !currentChat) return
 
     try {
       setSending(true)
       const response = await apiClient.sendMessage(currentChat.id, messageText.trim())
       
-      // Add new message to the list (ensure response exists)
-      if (response) {
-        setMessages(prev => Array.isArray(prev) ? [...prev, response] : [response])
-      }
+      // Don't add message here - will be added by WebSocket real-time update
+      // This prevents duplicates when server broadcasts the message back
+      console.log('Message sent, waiting for WebSocket confirmation:', response)
+      
       setMessageText('')
     } catch (error) {
       console.error('Error sending message:', error)
@@ -146,60 +245,111 @@ function ChatPageContent() {
     } finally {
       setSending(false)
     }
-  }
+  }, [messageText, currentChat, message])
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
     }
-  }
+  }, [sendMessage])
 
-  if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh',
-        flexDirection: 'column'
+  // Memoize message rendering to prevent re-render when typing
+  const renderMessage = useCallback((msg: Message) => (
+    <List.Item style={{ 
+      border: 'none', 
+      padding: '8px 0',
+      display: 'flex',
+      justifyContent: msg.is_own_message ? 'flex-end' : 'flex-start'
+    }}>
+      <div style={{
+        maxWidth: '70%',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        backgroundColor: msg.is_own_message ? '#1890ff' : '#fff',
+        color: msg.is_own_message ? '#fff' : '#000',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
       }}>
-        <Spin size="large" />
-        <Text style={{ marginTop: 16, color: '#1890ff' }}>
-          Đang tải danh sách người dùng...
-        </Text>
+        <div>{msg.content}</div>
+        <div style={{
+          fontSize: '11px',
+          marginTop: '4px',
+          opacity: 0.7,
+          textAlign: 'right'
+        }}>
+          {dayjs(msg.timestamp).format('HH:mm')}
+        </div>
       </div>
-    )
-  }
+    </List.Item>
+  ), [])
 
   return (
     <Row gutter={16} className="chat-container">
       {/* Users List */}
       <Col xs={24} md={8}>
         <Card 
-          title="Danh sách người dùng" 
+          title={
+            <Space>
+              <span>Danh sách người dùng</span>
+              {users.length > 0 && (
+                <Badge 
+                  count={users.filter(u => u.is_online).length} 
+                  style={{ backgroundColor: '#52c41a' }}
+                  title="Người dùng online"
+                />
+              )}
+            </Space>
+          }
           style={{ height: '100%' }}
           styles={{ body: { padding: 0, height: 'calc(100% - 57px)', overflow: 'auto' } }}
+          loading={loadingUsers}
         >
-          <List
-            dataSource={Array.isArray(users) ? users : []}
-            renderItem={(user) => (
-              <List.Item
-                onClick={() => selectUser(user.id)}
-                className={`chat-user-item ${selectedUser?.id === user.id ? 'selected' : ''}`}
-              >
-                <List.Item.Meta
-                  avatar={
-                    <Badge dot={user.is_online} status={user.is_online ? 'success' : 'default'}>
-                      <Avatar icon={<UserOutlined />} />
-                    </Badge>
-                  }
-                  title={user.username}
-                  description={user.is_online ? 'Đang online' : 'Offline'}
-                />
-              </List.Item>
-            )}
-          />
+          {users.length === 0 && !loadingUsers ? (
+            <Empty 
+              description="Chưa có người dùng nào"
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ marginTop: 50 }}
+            />
+          ) : (
+            <List
+              dataSource={Array.isArray(users) ? users : []}
+              renderItem={(user) => {
+                const isSavedMessages = currentUser && user.id === parseInt(currentUser.id) && user.username === 'Saved Messages'
+                return (
+                  <List.Item
+                    onClick={() => selectUser(user.id)}
+                    className={`chat-user-item ${selectedUser?.id === user.id ? 'selected' : ''}`}
+                    style={{ 
+                      cursor: 'pointer',
+                      backgroundColor: isSavedMessages ? 'rgba(24, 144, 255, 0.05)' : undefined
+                    }}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        isSavedMessages ? (
+                          <Avatar style={{ backgroundColor: '#1890ff' }} icon={<BookOutlined />} />
+                        ) : (
+                          <Badge dot={user.is_online} status={user.is_online ? 'success' : 'default'}>
+                            <Avatar icon={<UserOutlined />} />
+                          </Badge>
+                        )
+                      }
+                      title={
+                        <span style={{ fontWeight: isSavedMessages ? 600 : 400 }}>
+                          {user.username}
+                        </span>
+                      }
+                      description={
+                        isSavedMessages 
+                          ? 'Lưu tin nhắn và file của bạn' 
+                          : (user.is_online ? 'Đang online' : 'Offline')
+                      }
+                    />
+                  </List.Item>
+                )
+              }}
+            />
+          )}
         </Card>
       </Col>
 
@@ -209,12 +359,18 @@ function ChatPageContent() {
           title={
             selectedUser ? (
               <Space>
-                <Avatar icon={<UserOutlined />} />
+                {currentUser && selectedUser.id === parseInt(currentUser.id) && selectedUser.username === 'Saved Messages' ? (
+                  <Avatar style={{ backgroundColor: '#1890ff' }} icon={<BookOutlined />} />
+                ) : (
+                  <Avatar icon={<UserOutlined />} />
+                )}
                 <span>{selectedUser.username}</span>
-                <Badge 
-                  dot={selectedUser.is_online} 
-                  status={selectedUser.is_online ? 'success' : 'default'} 
-                />
+                {!(currentUser && selectedUser.id === parseInt(currentUser.id) && selectedUser.username === 'Saved Messages') && (
+                  <Badge 
+                    dot={selectedUser.is_online} 
+                    status={selectedUser.is_online ? 'success' : 'default'} 
+                  />
+                )}
               </Space>
             ) : (
               'Chọn người dùng để bắt đầu trò chuyện'
@@ -233,7 +389,12 @@ function ChatPageContent() {
           {selectedUser ? (
             <>
               {/* Messages Area */}
-              <div className="chat-messages">
+              <div className="chat-messages" style={{ 
+                flex: 1, 
+                overflow: 'auto', 
+                padding: '16px',
+                backgroundColor: '#f5f5f5'
+              }}>
                 {messages.length === 0 ? (
                   <Empty 
                     description="Chưa có tin nhắn nào"
@@ -241,25 +402,18 @@ function ChatPageContent() {
                   />
                 ) : (
                   <List
-                    dataSource={Array.isArray(messages) ? messages : []}
-                    renderItem={(msg) => (
-                      <List.Item style={{ border: 'none', padding: '8px 0' }}>
-                        <div className={`message-bubble ${msg.is_own_message ? 'own' : 'other'}`}>
-                          <div className={`message-content ${msg.is_own_message ? 'own' : 'other'}`}>
-                            <div>{msg.content}</div>
-                            <div className="message-time">
-                              {dayjs(msg.timestamp).format('HH:mm')}
-                            </div>
-                          </div>
-                        </div>
-                      </List.Item>
-                    )}
+                    dataSource={messages}
+                    renderItem={renderMessage}
                   />
                 )}
               </div>
 
               {/* Message Input */}
-              <div className="message-input-area">
+              <div style={{ 
+                padding: '16px',
+                borderTop: '1px solid #f0f0f0',
+                backgroundColor: '#fff'
+              }}>
                 <Space.Compact style={{ width: '100%' }}>
                   <TextArea
                     value={messageText}
@@ -296,9 +450,11 @@ function ChatPageContent() {
 export default function ChatPage() {
   return (
     <ProtectedRoute>
-      <div style={{ padding: '24px' }}>
-        <ChatPageContent />
-      </div>
+      <App>
+        <div style={{ padding: '24px' }}>
+          <ChatPageContent />
+        </div>
+      </App>
     </ProtectedRoute>
   )
 }

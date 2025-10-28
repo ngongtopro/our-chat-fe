@@ -14,6 +14,8 @@ export type RealtimeEventType =
   | 'caro.game_move'
   | 'caro.game_ended'
   | 'chat.new_message'
+  | 'chat.private_message'
+  | 'chat.user_status'
   | 'chat.room_updated'
   | 'farm.crop_ready'
   | 'farm.animal_ready'

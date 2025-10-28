@@ -99,6 +99,7 @@ export function useCaroRealtime() {
 export function useChatRealtime(roomId?: string) {
   const [newMessage, setNewMessage] = useState<any>(null)
   const [roomUpdate, setRoomUpdate] = useState<any>(null)
+  const [userStatusUpdate, setUserStatusUpdate] = useState<any>(null)
 
   // New message
   useRealtimeEvent('chat.new_message', (event) => {
@@ -107,6 +108,18 @@ export function useChatRealtime(roomId?: string) {
       console.log('💬 New message:', event.data)
       setNewMessage(event.data)
     }
+  })
+
+  // New private message
+  useRealtimeEvent('chat.private_message', (event) => {
+    console.log('💬 New private message:', event.data)
+    setNewMessage(event.data)
+  })
+
+  // User status changed
+  useRealtimeEvent('chat.user_status', (event) => {
+    console.log('👤 User status changed:', event.data)
+    setUserStatusUpdate(event.data)
   })
 
   // Room updated
@@ -120,6 +133,7 @@ export function useChatRealtime(roomId?: string) {
   return {
     newMessage,
     roomUpdate,
+    userStatusUpdate,
   }
 }
 
